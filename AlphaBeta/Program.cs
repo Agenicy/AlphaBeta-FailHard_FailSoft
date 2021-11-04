@@ -8,12 +8,15 @@ namespace AlphaBeta
 	{
 		static void Main(string[] args)
 		{
-			//var values = new[] { 41, 5, 12, 90, 101, 80, 20, 30, 34, 80, 36, 35, 50, 36, 25, 3 };
-			var values = new[] { 4, 8, 3, 5, 1, 7, 2, 9, 3, 9, 2, 3, 5, 4, 2, 8 };
+			var values = new[] { 41, 5, 12, 90, 101, 80, 20, 30, 34, 80, 36, 35, 50, 36, 25, 3 };
+			/*
+			var values = new[] { 41, 5, 12, 90, 101, 80, 20, 30, 34, 80, 36, 35, 50, 36, 25,  3,
+								21, 47, 65, 96,  32, 11, 74, 14, 59, 88, 46, 67, 32, 45 ,22, 23,
+								66, 49, 98, 75, 103, 54, 66, 88, 94, 65, 14, 21, 30,  7, 85, 10,
+								30, 20,  1, 85,  17,  0, 23, 29,  4, 37, 41,  8, 53, 12, 61, 67};
+			*/
 
-			NegaMaxNode.function = NegaMaxNode.Function.F;
-
-			int depthTotal = 5;
+			int depthTotal = (int)(Math.Log(values.Length) / Math.Log(2) + 1);
 			// use binary heap as example
 			{
 				int nodeTotal = (int)Math.Pow(2, depthTotal);
@@ -38,7 +41,25 @@ namespace AlphaBeta
 				}
 			}
 
-			Debug.Log($"Answer: {NegaMaxNode.Run(NegaMaxNode.p[1])}");
+			NegaMaxNode.function = NegaMaxNode.Function.F3;
+
+			switch (NegaMaxNode.function)
+			{
+				case NegaMaxNode.Function.BF:
+					Debug.Log($"Answer: {NegaMaxNode.Run(NegaMaxNode.p[1])}");
+					break;
+				case NegaMaxNode.Function.F:
+					Debug.Log($"Answer: {NegaMaxNode.Run(NegaMaxNode.p[1])}");
+					break;
+				case NegaMaxNode.Function.F2:
+					Debug.Log($"Answer: {NegaMaxNode.Run(NegaMaxNode.p[1], float.MinValue, float.MaxValue)}");
+					break;
+				case NegaMaxNode.Function.F3:
+					Debug.Log($"Answer: {NegaMaxNode.Run(NegaMaxNode.p[1], float.MinValue, float.MaxValue)}");
+					break;
+			}
+
+			Debug.Log($"Run time: {NegaMaxNode.time}");
 
 			for (int i = 0; i < NegaMaxNode.p.Count; i++)
 			{
@@ -64,7 +85,8 @@ namespace AlphaBeta
 		public float? cutoffValue = null;
 
 		#region NotUsed
-		static float time = 1;
+		public static float time = 0;
+		public static float timeLimit = float.MaxValue;
 		float depth = 1;
 		static float cutoffThreshold = -1;
 		#endregion
@@ -101,7 +123,7 @@ namespace AlphaBeta
 		/// <summary>
 		/// Go through the search tree
 		/// </summary>
-		public static float Run(NegaMaxNode position)
+		public static float Run(NegaMaxNode position, float alpha = 0, float beta = 0)
 		{
 			switch (function)
 			{
@@ -110,9 +132,9 @@ namespace AlphaBeta
 				case Function.F:
 					return (float)F(position);
 				case Function.F2:
-					return (float)F(position);
+					return (float)F2(position, alpha, beta);
 				case Function.F3:
-					return (float)F(position);
+					return (float)F3(position, alpha, beta);
 			}
 			return 0;
 		}
@@ -122,11 +144,12 @@ namespace AlphaBeta
 		/// </summary>
 		static float BF(NegaMaxNode position)
 		{
+			++time;
 			int d = position.CountChild();
 
 			if (d == 0
 				|| position.depth == cutoffThreshold
-				|| time == 0)
+				|| time > timeLimit)
 				return H(position);
 
 			float m = float.MinValue; // will be the max value
@@ -145,11 +168,12 @@ namespace AlphaBeta
 		/// </summary>
 		static float? F(NegaMaxNode position, float? cutoffValue = null)
 		{
+			++time;
 			int d = position.CountChild();
 
 			if (d == 0
 				|| position.depth == cutoffThreshold
-				|| time == 0)
+				|| time > timeLimit)
 				return H(position);
 
 			float m = float.MinValue; // will be the max value
@@ -166,7 +190,61 @@ namespace AlphaBeta
 				{
 					position.value = position.cutoffValue = m = (float)t;
 				}
-					
+
+			}
+			return m;
+		}
+
+		/// <summary>
+		/// Alpha-beta with Fail-hard
+		/// </summary>
+		static float? F2(NegaMaxNode position, float alpha, float beta)
+		{
+			++time;
+			int d = position.CountChild();
+
+			if (d == 0
+				|| position.depth == cutoffThreshold
+				|| time > timeLimit)
+				return H(position);
+
+			float m = alpha; // will be the max value
+			for (int i = 0; i < d; i++)
+			{
+				float? t = -F2(position.children[i], -beta, -m); // recursive
+
+				if (t > m)
+					position.value = m = (float)t;
+
+				if (m >= beta)
+					return m;
+			}
+			return m;
+		}
+
+		/// <summary>
+		/// Alpha-beta with Fail-soft
+		/// </summary>
+		static float? F3(NegaMaxNode position, float alpha, float beta)
+		{
+			++time;
+			int d = position.CountChild();
+
+			if (d == 0
+				|| position.depth == cutoffThreshold
+				|| time > timeLimit)
+				return H(position);
+
+			float m = float.MinValue; // will be the max value
+			for (int i = 0; i < d; i++)
+			{
+				float? t = -F3(position.children[i], -beta, -MathF.Max(m, alpha)); // recursive
+
+				if (t > m)
+					position.value = m = (float)t;
+
+				if (m >= beta)
+					return m;
 			}
 			return m;
 		}
